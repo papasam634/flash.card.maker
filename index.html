@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>自建單字卡 (管理優先版)</title>
+    <title>單字特訓班 (洗牌隨機版)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 強制隱藏/顯示樣式，確保分頁切換絕對有效 */
         .hidden { display: none !important; }
         
-        /* 錯誤搖晃動畫 */
+        /* 搖晃動畫 */
         .shake { animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both; }
         @keyframes shake {
             10%, 90% { transform: translate3d(-1px, 0, 0); }
@@ -18,25 +17,21 @@
             40%, 60% { transform: translate3d(4px, 0, 0); }
         }
         
-        /* 自定義滾動條 */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        /* 進度條動畫 */
+        .progress-bar { transition: width 0.3s ease; }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen text-gray-800 font-sans flex flex-col items-center py-8 px-4">
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans flex flex-col items-center py-6 px-4">
 
-    <div class="w-full max-w-3xl bg-white rounded-xl shadow-xl overflow-hidden min-h-[600px] flex flex-col">
+    <div class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden min-h-[600px] flex flex-col">
         
-        <!-- 頂部導航列 -->
-        <header class="bg-white border-b p-4 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-0 z-10">
+        <!-- Header -->
+        <header class="bg-white border-b px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 sticky top-0 z-20">
             <div class="flex items-center gap-2">
-                <span class="text-2xl">📚</span>
+                <span class="text-2xl">🔀</span>
                 <h1 class="text-xl font-bold text-gray-700">單字特訓班</h1>
             </div>
             
-            <!-- 分頁切換按鈕 -->
             <div class="flex bg-gray-100 p-1 rounded-lg">
                 <button onclick="switchTab('manage')" id="btn-manage" class="px-5 py-2 rounded-md text-sm font-bold transition-all shadow-sm bg-blue-600 text-white">
                     1. 單字管理
@@ -47,41 +42,365 @@
             </div>
         </header>
 
-        <!-- 頁面 1: 單字管理 (預設顯示) -->
-        <main id="view-manage" class="flex-1 p-6 flex flex-col">
-            <!-- 新增區塊 -->
-            <div class="bg-blue-50 border border-blue-100 rounded-xl p-5 mb-6 shadow-sm">
+        <!-- 分頁 1: 單字管理 (預設) -->
+        <main id="view-manage" class="flex-1 p-6 flex flex-col bg-gray-50">
+            
+            <!-- 新增區 -->
+            <div class="bg-white border border-blue-100 rounded-xl p-5 mb-6 shadow-sm">
                 <h3 class="font-bold text-blue-800 mb-3 flex items-center gap-2">
-                    ➕ 快速新增單字
-                    <span class="text-xs font-normal text-blue-600 bg-white px-2 py-0.5 rounded-full border border-blue-200">Enter 鍵可連續新增</span>
+                    ➕ 新增單字
+                    <span class="text-xs text-gray-400 font-normal ml-auto">按 Enter 自動新增</span>
                 </h3>
                 <form id="add-form" class="grid grid-cols-1 md:grid-cols-10 gap-3">
-                    <!-- 拼字 (佔 4 等份) -->
                     <div class="md:col-span-4">
-                        <input type="text" id="input-spelling" placeholder="英文拼字 (例: Apple)" required 
-                               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all"
+                        <input type="text" id="input-spelling" placeholder="英文 (Apple)" required 
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
                                autocomplete="off">
                     </div>
-                    <!-- 中文 (佔 3 等份) -->
                     <div class="md:col-span-3">
-                        <input type="text" id="input-meaning" placeholder="中文意思 (例: 蘋果)" required 
-                               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all"
+                        <input type="text" id="input-meaning" placeholder="中文 (蘋果)" required 
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
                                autocomplete="off">
                     </div>
-                    <!-- 詞性 (佔 2 等份) -->
                     <div class="md:col-span-2">
                         <input type="text" id="input-pos" placeholder="詞性 (n.)" required 
-                               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none transition-all"
+                               class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-400 outline-none"
                                autocomplete="off">
                     </div>
-                    <!-- 按鈕 (佔 1 等份) -->
                     <div class="md:col-span-1">
-                        <button type="submit" class="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded transition-colors flex items-center justify-center py-2">
+                        <button type="submit" class="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-bold rounded flex items-center justify-center py-2">
                             新增
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!-- 列表區塊 -->
-            <div class="flex justify-between items-end mb-2
+            <!-- 列表區 -->
+            <div class="flex justify-between items-center mb-2 px-1">
+                <span class="text-sm font-bold text-gray-500">總單字量：<span id="word-count">0</span></span>
+                <button onclick="resetData()" class="text-xs text-red-400 hover:text-red-600 underline">清空資料庫</button>
+            </div>
+
+            <div class="flex-1 border rounded-xl overflow-hidden bg-white relative shadow-inner">
+                <div class="overflow-y-auto absolute inset-0">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 sticky top-0 z-10">
+                            <tr>
+                                <th class="p-3 text-sm font-semibold text-gray-600 border-b">英文</th>
+                                <th class="p-3 text-sm font-semibold text-gray-600 border-b">中文</th>
+                                <th class="p-3 text-sm font-semibold text-gray-600 border-b">詞性</th>
+                                <th class="p-3 text-sm font-semibold text-gray-600 border-b text-right">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="word-list-body" class="divide-y divide-gray-100">
+                            <!-- JS 生成 -->
+                        </tbody>
+                    </table>
+                    <div id="list-empty-msg" class="hidden flex flex-col items-center justify-center h-full text-gray-400">
+                        <p class="text-3xl mb-2">📂</p>
+                        <p>暫無單字</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 分頁 2: 隨機測驗 -->
+        <main id="view-quiz" class="hidden flex-1 flex flex-col relative bg-slate-50">
+            
+            <!-- 進度指示器 -->
+            <div class="bg-slate-200 h-1 w-full">
+                <div id="round-progress" class="bg-blue-500 h-1 progress-bar" style="width: 0%"></div>
+            </div>
+            <div class="text-center py-2 text-xs text-gray-400 bg-white border-b">
+                本輪剩餘：<span id="queue-count" class="font-bold text-blue-600">0</span> 題 (隨機洗牌不重複)
+            </div>
+
+            <!-- 測驗核心區 -->
+            <div class="flex-1 flex flex-col justify-center items-center p-6">
+                <div id="quiz-card-container" class="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 text-center">
+                    
+                    <div class="mb-8">
+                        <span id="quiz-pos" class="inline-block bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded mb-4">詞性</span>
+                        <h2 id="quiz-meaning" class="text-4xl font-bold text-gray-800 break-words leading-tight">
+                            <!-- 題目 -->
+                        </h2>
+                    </div>
+
+                    <div class="relative mb-8 group">
+                        <input type="text" id="quiz-input" placeholder="輸入拼字..." 
+                               class="w-full text-center text-3xl font-mono border-b-2 border-gray-300 bg-transparent focus:border-blue-500 outline-none py-3 transition-colors placeholder-gray-300"
+                               autocomplete="off" autocapitalize="off" spellcheck="false">
+                        <div id="quiz-feedback" class="absolute w-full text-center mt-2 text-sm font-bold opacity-0 transition-opacity"></div>
+                    </div>
+
+                    <div id="quiz-actions" class="hidden animate-bounce-in">
+                        <button onclick="nextQuestion()" class="w-full bg-green-500 hover:bg-green-600 text-white text-lg font-bold py-3 px-4 rounded-xl shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-300">
+                            下一題 ➔
+                        </button>
+                        <p class="text-xs text-gray-400 mt-2">按下 Enter 繼續</p>
+                    </div>
+                </div>
+
+                <!-- 無資料提示 -->
+                <div id="quiz-empty-msg" class="hidden text-center">
+                    <p class="text-xl text-gray-500 mb-4">沒有單字可考</p>
+                    <button onclick="switchTab('manage')" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">
+                        去新增單字
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // --- 資料與狀態 ---
+        const STORAGE_KEY = 'vocab_shuffle_v1';
+        let words = [];
+        let quizQueue = []; // 待考佇列 (洗牌用)
+        let currentWord = null;
+
+        // --- 初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try { words = JSON.parse(saved); } catch(e) { words = []; }
+            }
+            renderList();
+            document.getElementById('input-spelling').focus();
+        });
+
+        // --- 洗牌演算法 (Fisher-Yates Shuffle) ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // --- 補充題庫 (當題目考完一輪時) ---
+        function refillQueue() {
+            if (words.length === 0) return;
+            // 複製一份所有單字並洗牌
+            quizQueue = shuffleArray([...words]);
+            updateQueueUI();
+            
+            // 可選：顯示「新一輪開始」的提示
+            // console.log("新一輪洗牌完成");
+        }
+
+        // --- 測驗邏輯 ---
+        function nextQuestion() {
+            // 如果總表沒字
+            if (words.length === 0) {
+                initQuizMode(); // 觸發空狀態顯示
+                return;
+            }
+
+            // 如果待考佇列空了，重新洗牌填滿
+            if (quizQueue.length === 0) {
+                refillQueue();
+            }
+
+            // 取出佇列中的最後一個
+            currentWord = quizQueue.pop();
+            updateQueueUI();
+
+            // UI 重置
+            const input = document.getElementById('quiz-input');
+            const feedback = document.getElementById('quiz-feedback');
+            const actions = document.getElementById('quiz-actions');
+
+            input.value = '';
+            input.disabled = false;
+            input.className = "w-full text-center text-3xl font-mono border-b-2 border-gray-300 bg-transparent focus:border-blue-500 outline-none py-3 transition-colors placeholder-gray-300";
+            
+            feedback.style.opacity = '0';
+            actions.classList.add('hidden');
+
+            document.getElementById('quiz-meaning').textContent = currentWord.meaning;
+            document.getElementById('quiz-pos').textContent = currentWord.pos;
+
+            setTimeout(() => input.focus(), 50);
+        }
+
+        function updateQueueUI() {
+            // 計算進度條 (總數 - 剩餘 / 總數)
+            const total = words.length || 1;
+            const remaining = quizQueue.length;
+            const progress = ((total - remaining) / total) * 100;
+            
+            document.getElementById('queue-count').textContent = remaining;
+            document.getElementById('round-progress').style.width = `${progress}%`;
+        }
+
+        // --- 輸入檢查邏輯 ---
+        document.getElementById('quiz-input').addEventListener('input', function(e) {
+            if (!currentWord) return;
+            
+            const val = e.target.value; 
+            const target = currentWord.spelling;
+            const feedback = document.getElementById('quiz-feedback');
+            
+            // 1. 答對
+            if (val === target) {
+                e.target.disabled = true;
+                e.target.classList.remove('border-gray-300', 'focus:border-blue-500', 'border-red-500');
+                e.target.classList.add('border-green-500', 'text-green-600');
+                
+                feedback.textContent = 'Correct! ' + target;
+                feedback.className = 'absolute w-full text-center mt-2 text-sm font-bold text-green-600 opacity-100';
+                
+                document.getElementById('quiz-actions').classList.remove('hidden');
+                document.querySelector('#quiz-actions button').focus();
+                return;
+            }
+
+            // 2. 答錯 (前綴不對)
+            if (!target.startsWith(val)) {
+                e.target.classList.add('border-red-500', 'text-red-600', 'shake');
+                e.target.classList.remove('border-gray-300', 'focus:border-blue-500');
+                
+                feedback.textContent = 'Spelling Error...';
+                feedback.className = 'absolute w-full text-center mt-2 text-sm font-bold text-red-500 opacity-100';
+                
+                setTimeout(() => e.target.classList.remove('shake'), 300);
+            } else {
+                // 3. 輸入中
+                e.target.classList.remove('border-red-500', 'text-red-600');
+                e.target.classList.add('border-gray-300', 'focus:border-blue-500');
+                feedback.style.opacity = '0';
+            }
+        });
+
+        // Enter 鍵支援
+        document.addEventListener('keydown', (e) => {
+            const quizView = document.getElementById('view-quiz');
+            const actions = document.getElementById('quiz-actions');
+            
+            // 在測驗頁面且答對時按 Enter -> 下一題
+            if (e.key === 'Enter' && !quizView.classList.contains('hidden') && !actions.classList.contains('hidden')) {
+                nextQuestion();
+            }
+        });
+
+        // --- 管理頁面邏輯 ---
+        document.getElementById('add-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const s = document.getElementById('input-spelling').value.trim();
+            const m = document.getElementById('input-meaning').value.trim();
+            const p = document.getElementById('input-pos').value.trim();
+            if(!s || !m) return;
+
+            words.unshift({ id: Date.now(), spelling: s, meaning: m, pos: p });
+            saveData();
+            renderList();
+            
+            // 當新增單字時，如果測驗隊列是空的，或是希望重置測驗流，可以在此處處理
+            // 這裡選擇不強制重置隊列，讓使用者考完這輪再遇到新字，或者使用者手動刷新
+            // 為了避免新字一直考不到，我們這裡做一個簡單處理：若佇列已空，下次nextQuestion會自動把新字加進來洗牌
+            
+            e.target.reset();
+            document.getElementById('input-spelling').focus();
+        });
+
+        function deleteWord(id) {
+            words = words.filter(w => w.id !== id);
+            saveData();
+            renderList();
+            // 刪除單字也要同步從待考清單移除，避免考到不存在的字
+            quizQueue = quizQueue.filter(w => w.id !== id);
+            updateQueueUI();
+        }
+
+        function renderList() {
+            const tbody = document.getElementById('word-list-body');
+            const emptyMsg = document.getElementById('list-empty-msg');
+            const count = document.getElementById('word-count');
+
+            tbody.innerHTML = '';
+            count.textContent = words.length;
+
+            if (words.length === 0) {
+                emptyMsg.classList.remove('hidden');
+            } else {
+                emptyMsg.classList.add('hidden');
+                words.forEach(w => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50';
+                    tr.innerHTML = `
+                        <td class="p-3 font-mono text-blue-700">${w.spelling}</td>
+                        <td class="p-3">${w.meaning}</td>
+                        <td class="p-3"><span class="bg-gray-200 text-xs px-2 py-1 rounded">${w.pos}</span></td>
+                        <td class="p-3 text-right">
+                            <button onclick="deleteWord(${w.id})" class="text-gray-300 hover:text-red-500 font-bold px-2">✕</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        function resetData() {
+            if(confirm('確定要清空資料嗎？')) {
+                words = [];
+                quizQueue = [];
+                saveData();
+                renderList();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
+        }
+
+        // --- 頁面切換 ---
+        function switchTab(tab) {
+            const vManage = document.getElementById('view-manage');
+            const vQuiz = document.getElementById('view-quiz');
+            const bManage = document.getElementById('btn-manage');
+            const bQuiz = document.getElementById('btn-quiz');
+
+            if (tab === 'manage') {
+                vManage.classList.remove('hidden');
+                vQuiz.classList.add('hidden');
+                updateTabStyle(bManage, true);
+                updateTabStyle(bQuiz, false);
+                setTimeout(() => document.getElementById('input-spelling').focus(), 50);
+            } else {
+                vManage.classList.add('hidden');
+                vQuiz.classList.remove('hidden');
+                updateTabStyle(bManage, false);
+                updateTabStyle(bQuiz, true);
+                initQuizMode();
+            }
+        }
+
+        function initQuizMode() {
+            const card = document.getElementById('quiz-card-container');
+            const empty = document.getElementById('quiz-empty-msg');
+            
+            if (words.length === 0) {
+                card.classList.add('hidden');
+                empty.classList.remove('hidden');
+            } else {
+                empty.classList.add('hidden');
+                card.classList.remove('hidden');
+                
+                // 只有當沒題目在手上時，才抽下一題
+                if (!currentWord || document.getElementById('quiz-actions').classList.contains('hidden') === false) {
+                    nextQuestion();
+                }
+            }
+        }
+
+        function updateTabStyle(btn, active) {
+            if (active) {
+                btn.className = "px-5 py-2 rounded-md text-sm font-bold transition-all shadow-sm bg-blue-600 text-white";
+            } else {
+                btn.className = "px-5 py-2 rounded-md text-sm font-bold transition-all text-gray-600 hover:bg-gray-200";
+            }
+        }
+    </script>
+</body>
+</html>
