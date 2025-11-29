@@ -3,54 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>單字特訓班 (穩定修復版)</title>
-    <!-- 嘗試載入 Tailwind，失敗也不會影響功能 -->
+    <title>單字特訓班 (YAML 擴充版)</title>
+    <!-- 解析 YAML 用的套件 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* === 核心樣式 (保證功能正常) === */
-        /* 強制隱藏，優先級最高 */
         .hidden-force { display: none !important; }
         
-        /* 預設顯示樣式 (若 Tailwind 沒載入) */
         body { font-family: sans-serif; background: #f3f4f6; margin: 0; padding: 20px; display: flex; justify-content: center; }
         .container { background: white; width: 100%; max-width: 800px; min-height: 600px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
         
-        /* 分頁按鈕樣式 */
         .nav-btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; transition: 0.2s; }
-        .nav-btn.active { background-color: #2563eb; color: white; } /* 藍色 */
-        .nav-btn.inactive { background-color: #f3f4f6; color: #4b5563; } /* 灰色 */
+        .nav-btn.active { background-color: #2563eb; color: white; }
+        .nav-btn.inactive { background-color: #f3f4f6; color: #4b5563; }
         .nav-btn.inactive:hover { background-color: #e5e7eb; }
 
-        /* 輸入框錯誤動畫 */
         .shake { animation: shake 0.3s ease-in-out; border-color: #ef4444 !important; color: #ef4444 !important; }
         @keyframes shake {
             0%, 100% { transform: translateX(0); }
             25% { transform: translateX(-5px); }
             75% { transform: translateX(5px); }
         }
+
+        /* 讀取中的轉圈圈 */
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; margin-right: 8px;}
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div class="container">
-        
-        <!-- 頂部導航列 -->
+        <!-- Header -->
         <div style="padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: white;">
-            <h1 style="margin: 0; font-size: 20px; color: #374151;">🔀 單字特訓班</h1>
-            
-            <!-- 分頁按鈕 -->
+            <div style="display: flex; align-items: center;">
+                <h1 style="margin: 0; font-size: 20px; color: #374151;">🔀 單字特訓班</h1>
+                <span id="loading-indicator" style="margin-left: 15px; font-size: 12px; color: #6b7280; display: none;">
+                    <div class="loader"></div> 載入題庫中...
+                </span>
+            </div>
             <div style="display: flex; gap: 8px;">
                 <button id="btn-manage" class="nav-btn active">1. 單字管理</button>
                 <button id="btn-quiz" class="nav-btn inactive">2. 隨機測驗</button>
             </div>
         </div>
 
-        <!-- 頁面 1: 單字管理 -->
+        <!-- 管理頁 -->
         <div id="view-manage" style="padding: 24px; flex: 1; display: flex; flex-direction: column;">
             
-            <!-- 新增表單 -->
             <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #dbeafe;">
-                <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e40af;">➕ 新增單字</h3>
+                <h3 style="margin-top: 0; margin-bottom: 12px; color: #1e40af;">➕ 手動新增單字</h3>
                 <form id="add-form" style="display: flex; flex-wrap: wrap; gap: 10px;">
                     <input id="input-spelling" placeholder="英文 (Apple)" required style="flex: 2; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 120px;">
                     <input id="input-meaning" placeholder="中文 (蘋果)" required style="flex: 2; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; min-width: 120px;">
@@ -59,10 +60,12 @@
                 </form>
             </div>
 
-            <!-- 列表 -->
             <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span style="color: #6b7280; font-size: 14px;">總單字量：<span id="word-count" style="font-weight: bold;">0</span></span>
-                <button id="btn-reset" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px; text-decoration: underline;">清空資料</button>
+                <span style="color: #6b7280; font-size: 14px;">
+                    本地：<span id="count-local" style="font-weight: bold;">0</span> | 
+                    外部匯入：<span id="count-remote" style="font-weight: bold;">0</span>
+                </span>
+                <button id="btn-reset" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px; text-decoration: underline;">清除本地資料</button>
             </div>
 
             <div style="flex: 1; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; position: relative;">
@@ -70,10 +73,10 @@
                     <table style="width: 100%; border-collapse: collapse; text-align: left;">
                         <thead style="background: #f9fafb; position: sticky; top: 0;">
                             <tr>
-                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb;">英文</th>
-                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb;">中文</th>
-                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb;">詞性</th>
-                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">操作</th>
+                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; width: 30%;">英文</th>
+                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; width: 30%;">中文</th>
+                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; width: 20%;">詞性</th>
+                                <th style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">來源</th>
                             </tr>
                         </thead>
                         <tbody id="word-list-body"></tbody>
@@ -83,16 +86,13 @@
             </div>
         </div>
 
-        <!-- 頁面 2: 隨機測驗 -->
+        <!-- 測驗頁 -->
         <div id="view-quiz" class="hidden-force" style="padding: 24px; flex: 1; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-            
-            <!-- 進度條 -->
             <div style="width: 100%; height: 4px; background: #e5e7eb; margin-bottom: 8px; border-radius: 2px;">
                 <div id="progress-bar" style="width: 0%; height: 100%; background: #3b82f6; transition: width 0.3s;"></div>
             </div>
             <div style="font-size: 12px; color: #6b7280; margin-bottom: 40px;">本輪剩餘：<span id="queue-count">0</span> 題</div>
 
-            <!-- 測驗卡片 -->
             <div id="quiz-card" style="width: 100%; max-width: 400px; margin: 0 auto;">
                 <div style="margin-bottom: 20px;">
                     <span id="quiz-pos" style="background: #e0e7ff; color: #4338ca; padding: 2px 8px; border-radius: 4px; font-size: 12px;">詞性</span>
@@ -110,22 +110,27 @@
                 </button>
             </div>
 
-            <!-- 無題目提示 -->
             <div id="quiz-empty-msg" class="hidden-force">
                 <p style="font-size: 18px; color: #6b7280;">題庫是空的！</p>
-                <button id="btn-go-manage" style="color: #2563eb; background: none; border: none; cursor: pointer; text-decoration: underline;">回管理頁新增</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- 全域變數 ---
-        const STORAGE_KEY = 'vocab_app_final';
-        let words = [];
+        // === 設定區：請在這裡列出所有要載入的 YAML 檔名 ===
+        const YAML_FILES = [
+            'words.yml',
+            // 'toeic.yml',  <-- 如果有更多檔案，依此類推
+        ];
+        // ==========================================
+
+        const STORAGE_KEY = 'vocab_app_local';
+        let localWords = [];   // 手動輸入的 (存 localStorage)
+        let remoteWords = [];  // 從 YAML 讀來的 (唯讀)
+        let allWords = [];     // 合併後的總表
         let quizQueue = [];
         let currentWord = null;
 
-        // --- DOM 元素緩存 ---
         const el = {
             btnManage: document.getElementById('btn-manage'),
             btnQuiz: document.getElementById('btn-quiz'),
@@ -133,83 +138,84 @@
             viewQuiz: document.getElementById('view-quiz'),
             inputSpelling: document.getElementById('input-spelling'),
             addForm: document.getElementById('add-form'),
-            quizInput: document.getElementById('quiz-input')
+            quizInput: document.getElementById('quiz-input'),
+            loading: document.getElementById('loading-indicator')
         };
 
-        // --- 程式進入點 ---
         window.onload = function() {
-            // 1. 綁定分頁按鈕 (使用 onclick 屬性最直接)
-            el.btnManage.onclick = function() { goToTab('manage'); };
-            el.btnQuiz.onclick = function() { goToTab('quiz'); };
-            document.getElementById('btn-go-manage').onclick = function() { goToTab('manage'); };
-
-            // 2. 綁定其他按鈕
+            el.btnManage.onclick = () => goToTab('manage');
+            el.btnQuiz.onclick = () => goToTab('quiz');
             el.addForm.onsubmit = handleAddWord;
-            document.getElementById('btn-reset').onclick = resetData;
+            document.getElementById('btn-reset').onclick = resetLocalData;
             document.getElementById('btn-next').onclick = nextQuestion;
 
-            // 3. 綁定輸入框邏輯
             el.quizInput.oninput = checkAnswer;
-            el.quizInput.onkeydown = function(e) {
+            el.quizInput.onkeydown = (e) => {
                 if (e.key === 'Enter' && !document.getElementById('btn-next').classList.contains('hidden-force')) {
                     nextQuestion();
                 }
             };
 
-            // 4. 載入資料
-            loadData();
+            loadData(); // 載入本地
+            loadRemoteYamls(); // 載入遠端
         };
 
-        // --- 分頁切換邏輯 (最核心修復) ---
-        function goToTab(tabName) {
-            if (tabName === 'manage') {
-                // 顯示管理頁
-                el.viewManage.classList.remove('hidden-force');
-                el.viewManage.style.display = 'flex'; // 確保 flex 佈局
+        // --- 讀取 YAML 檔案 ---
+        async function loadRemoteYamls() {
+            el.loading.style.display = 'inline-block';
+            remoteWords = [];
+
+            try {
+                const promises = YAML_FILES.map(filename => 
+                    fetch(filename)
+                        .then(res => {
+                            if (!res.ok) throw new Error(`無法讀取 ${filename}`);
+                            return res.text();
+                        })
+                        .then(text => jsyaml.load(text)) // 使用 js-yaml 解析
+                        .catch(err => {
+                            console.warn(`讀取 ${filename} 失敗:`, err);
+                            return [];
+                        })
+                );
+
+                const results = await Promise.all(promises);
                 
-                // 隱藏測驗頁
-                el.viewQuiz.classList.add('hidden-force');
-                el.viewQuiz.style.display = 'none';
+                // 合併所有檔案的結果
+                results.forEach(data => {
+                    if (Array.isArray(data)) {
+                        // 加上標記區分來源
+                        const labeled = data.map(w => ({
+                            id: 'remote_' + Math.random().toString(36).substr(2, 9),
+                            s: w.spelling, 
+                            m: w.meaning, 
+                            p: w.pos, 
+                            isRemote: true
+                        }));
+                        remoteWords = remoteWords.concat(labeled);
+                    }
+                });
 
-                // 更新按鈕樣式
-                el.btnManage.className = 'nav-btn active';
-                el.btnQuiz.className = 'nav-btn inactive';
-                
-                // 聚焦
-                setTimeout(() => el.inputSpelling.focus(), 50);
+                combineAndRender();
 
-            } else {
-                // 顯示測驗頁
-                el.viewQuiz.classList.remove('hidden-force');
-                el.viewQuiz.style.display = 'flex'; // 確保 flex 佈局
-
-                // 隱藏管理頁
-                el.viewManage.classList.add('hidden-force');
-                el.viewManage.style.display = 'none';
-
-                // 更新按鈕樣式
-                el.btnManage.className = 'nav-btn inactive';
-                el.btnQuiz.className = 'nav-btn active';
-
-                // 初始化測驗
-                initQuiz();
+            } catch (e) {
+                console.error("YAML 載入總體失敗", e);
+            } finally {
+                el.loading.style.display = 'none';
             }
         }
 
-        // --- 資料邏輯 ---
+        // --- 資料處理 ---
         function loadData() {
             try {
                 const raw = localStorage.getItem(STORAGE_KEY);
-                if (raw) words = JSON.parse(raw);
-            } catch (e) {
-                console.error("讀取錯誤，重置資料");
-                words = [];
-            }
-            renderList();
+                if (raw) localWords = JSON.parse(raw);
+            } catch (e) { localWords = []; }
         }
 
-        function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(words));
+        function combineAndRender() {
+            // 合併 本地 + 遠端
+            allWords = [...localWords, ...remoteWords];
             renderList();
         }
 
@@ -218,52 +224,60 @@
             const s = el.inputSpelling.value.trim();
             const m = document.getElementById('input-meaning').value.trim();
             const p = document.getElementById('input-pos').value.trim();
-            
             if (!s || !m) return;
 
-            words.unshift({ id: Date.now(), s, m, p }); // s=spelling, m=meaning, p=pos
-            saveData();
-
-            // 清空並聚焦
+            localWords.unshift({ id: Date.now(), s, m, p, isRemote: false });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localWords));
+            
             e.target.reset();
             el.inputSpelling.focus();
-            
-            // 如果佇列空了，視為新一輪可能要加進去 (簡單處理：清空佇列強制重洗)
-            if(quizQueue.length === 0) quizQueue = [];
+            combineAndRender();
         }
 
-        function deleteWord(id) {
-            words = words.filter(w => w.id !== id);
-            // 同步移除佇列中的該字
-            quizQueue = quizQueue.filter(w => w.id !== id);
-            saveData();
+        function deleteLocalWord(id) {
+            localWords = localWords.filter(w => w.id !== id);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localWords));
+            combineAndRender();
         }
 
-        function resetData() {
-            if(!confirm('確定清空所有單字？')) return;
-            words = [];
-            quizQueue = [];
-            saveData();
+        function resetLocalData() {
+            if(!confirm('確定清空「本地手動輸入」的單字？(YAML 匯入的單字不會消失)')) return;
+            localWords = [];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localWords));
+            combineAndRender();
         }
 
         function renderList() {
             const tbody = document.getElementById('word-list-body');
             tbody.innerHTML = '';
-            document.getElementById('word-count').innerText = words.length;
+            
+            document.getElementById('count-local').innerText = localWords.length;
+            document.getElementById('count-remote').innerText = remoteWords.length;
 
-            if (words.length === 0) {
+            if (allWords.length === 0) {
                 document.getElementById('list-empty-msg').style.display = 'block';
             } else {
                 document.getElementById('list-empty-msg').style.display = 'none';
-                words.forEach(w => {
+                
+                // 為了效能，只顯示前 100 筆 (如果題庫很大的話)
+                // 或是直接顯示全部，視您的題庫大小而定
+                allWords.slice(0, 200).forEach(w => {
                     const tr = document.createElement('tr');
+                    
+                    // 操作按鈕：如果是遠端的顯示鎖頭，本地的顯示刪除
+                    const actionBtn = w.isRemote 
+                        ? `<span style="color:#9ca3af; font-size:12px;">🔒 唯讀</span>`
+                        : `<button onclick="deleteLocalWord(${w.id})" style="color:#ef4444; background:none; border:none; cursor:pointer; font-weight:bold;">✕</button>`;
+
+                    const sourceLabel = w.isRemote 
+                        ? `<span style="background:#ecfdf5; color:#047857; padding:2px 6px; border-radius:4px; font-size:11px;">匯入</span>`
+                        : `<span style="background:#eff6ff; color:#1d4ed8; padding:2px 6px; border-radius:4px; font-size:11px;">本地</span>`;
+
                     tr.innerHTML = `
-                        <td style="padding:12px; color:#2563eb; font-family:monospace; font-size:16px;">${w.s}</td>
+                        <td style="padding:12px; color:#2563eb; font-family:monospace; font-size:15px;">${w.s}</td>
                         <td style="padding:12px;">${w.m}</td>
                         <td style="padding:12px;"><span style="background:#f3f4f6; padding:2px 6px; border-radius:4px; font-size:12px;">${w.p}</span></td>
-                        <td style="padding:12px; text-align:right;">
-                            <button onclick="deleteWord(${w.id})" style="color:#9ca3af; background:none; border:none; cursor:pointer; font-weight:bold; font-size:16px;">✕</button>
-                        </td>
+                        <td style="padding:12px; text-align:right;">${actionBtn}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -271,10 +285,116 @@
         }
 
         // --- 測驗邏輯 ---
-        function initQuiz() {
-            const card = document.getElementById('quiz-card');
-            const emptyMsg = document.getElementById('quiz-empty-msg');
+        function goToTab(tabName) {
+            if (tabName === 'manage') {
+                el.viewManage.classList.remove('hidden-force');
+                el.viewManage.style.display = 'flex';
+                el.viewQuiz.classList.add('hidden-force');
+                el.viewQuiz.style.display = 'none';
+                el.btnManage.className = 'nav-btn active';
+                el.btnQuiz.className = 'nav-btn inactive';
+            } else {
+                el.viewQuiz.classList.remove('hidden-force');
+                el.viewQuiz.style.display = 'flex';
+                el.viewManage.classList.add('hidden-force');
+                el.viewManage.style.display = 'none';
+                el.btnManage.className = 'nav-btn inactive';
+                el.btnQuiz.className = 'nav-btn active';
+                initQuiz();
+            }
+        }
 
-            if (words.length === 0) {
-                card.classList.add('hidden-force');
-                emptyMsg.classList
+        function initQuiz() {
+            if (allWords.length === 0) {
+                document.getElementById('quiz-card').classList.add('hidden-force');
+                document.getElementById('quiz-empty-msg').classList.remove('hidden-force');
+            } else {
+                document.getElementById('quiz-empty-msg').classList.add('hidden-force');
+                document.getElementById('quiz-card').classList.remove('hidden-force');
+                
+                // 重新進入測驗時，如果沒有正在進行的題目，才換下一題
+                // 或者佇列為空時，先強制洗牌一次
+                if (quizQueue.length === 0 && !currentWord) {
+                     // 初次進入，強制洗牌
+                     refillQueue(); 
+                     nextQuestion();
+                } else if (!currentWord) {
+                     nextQuestion();
+                }
+            }
+        }
+
+        function refillQueue() {
+            // 複製一份總表並洗牌
+            let temp = [...allWords];
+            for (let i = temp.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [temp[i], temp[j]] = [temp[j], temp[i]];
+            }
+            quizQueue = temp;
+        }
+
+        function nextQuestion() {
+            if (allWords.length === 0) return;
+
+            if (quizQueue.length === 0) {
+                refillQueue();
+            }
+
+            currentWord = quizQueue.pop();
+            updateProgress();
+
+            // UI Reset
+            el.quizInput.value = '';
+            el.quizInput.disabled = false;
+            el.quizInput.style.color = 'black';
+            el.quizInput.style.borderBottomColor = '#d1d5db';
+            document.getElementById('quiz-msg').innerText = '';
+            document.getElementById('btn-next').classList.add('hidden-force');
+            
+            document.getElementById('quiz-meaning').innerText = currentWord.m;
+            document.getElementById('quiz-pos').innerText = currentWord.p;
+
+            setTimeout(() => el.quizInput.focus(), 50);
+        }
+
+        function checkAnswer(e) {
+            if (!currentWord) return;
+            const val = e.target.value;
+            const target = currentWord.s;
+            const msg = document.getElementById('quiz-msg');
+
+            if (val === target) {
+                e.target.disabled = true;
+                e.target.style.color = '#16a34a';
+                e.target.style.borderBottomColor = '#16a34a';
+                msg.innerText = '🎉 Correct!';
+                msg.style.color = '#16a34a';
+                document.getElementById('btn-next').classList.remove('hidden-force');
+                document.getElementById('btn-next').focus();
+                return;
+            }
+
+            if (!target.startsWith(val)) {
+                e.target.classList.add('shake');
+                msg.innerText = '❌ 拼字錯誤';
+                msg.style.color = '#ef4444';
+                setTimeout(() => e.target.classList.remove('shake'), 300);
+            } else {
+                e.target.classList.remove('shake');
+                e.target.style.borderBottomColor = '#d1d5db';
+                e.target.style.color = 'black';
+                msg.innerText = '';
+            }
+        }
+
+        function updateProgress() {
+            const total = allWords.length || 1;
+            const remain = quizQueue.length;
+            const percent = ((total - remain) / total) * 100;
+            document.getElementById('queue-count').innerText = remain;
+            document.getElementById('progress-bar').style.width = percent + '%';
+        }
+    </script>
+</body>
+</html>
